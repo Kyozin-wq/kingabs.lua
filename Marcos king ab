@@ -1,0 +1,520 @@
+--==================================================
+-- FLUENT UI (INALTERADA)
+--==================================================
+local Fluent = loadstring(game:HttpGet(
+    "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
+))()
+
+local SaveManager = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"
+))()
+
+local InterfaceManager = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"
+))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Nexus Hub",
+    SubTitle = "By: Marcos & Bruno",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+--==================================================
+-- STEALTH MODE - NOTIFY WRAPPER
+--==================================================
+local StealthMode = false
+
+local OriginalNotify = Fluent.Notify
+
+function Fluent:Notify(data)
+    if StealthMode then
+        return -- silêncio absoluto 🥷
+    end
+    return OriginalNotify(self, data)
+end
+
+--==================================================
+-- TABS
+--==================================================
+local Tabs = {
+    Main = Window:AddTab({ Title = "Home", Icon = "home" }),
+    Useful = Window:AddTab({ Title = "Utils", Icon = "eye" }),
+    PlayerHighlight = Window:AddTab({ Title = "Player Highlight", Icon = "user" }),
+    Miscellaneous = Window:AddTab({ Title = "Misc", Icon = "book" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+--==================================================
+-- VARIÁVEIS
+--==================================================
+local AutoBlockEnabled = false
+local MaxBlockDistance = 10
+local IgnorePlayersBehind = false
+local IgnoreOutsideArena = false
+local RandomizeStartDelay = false
+local RandomizeReleaseDelay = false
+local DisableWhenRoundEnds = false
+local DisableWhenAFK = false
+
+--==================================================
+-- UI - AUTO BLOCK
+--==================================================
+
+local AutoBlockToggle = Tabs.Main:AddToggle("AutoBlockEnabled", {
+    Title = "Auto Block",
+    Default = false,
+    Callback = function(v)
+        AutoBlockEnabled = v
+    end
+})
+
+Tabs.Main:AddSlider("MaxBlockDistance", {
+    Title = "Max Block Distance (Studs)",
+    Default = 10,
+    Min = 1,
+    Max = 20,
+    Rounding = 0,
+    Callback = function(v)
+        MaxBlockDistance = v
+    end
+})
+
+Tabs.Main:AddSlider("BlockChance", {
+    Title = "Block Chance (Percentage)",
+    Default = 100,
+    Min = 1,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(v)
+        BlockChance = v
+    end
+})
+
+Tabs.Main:AddToggle("IgnorePlayersBehind", {
+    Title = "Ignore Players Behind",
+    Default = false,
+    Callback = function(v)
+        IgnorePlayersBehind = v
+    end
+})
+
+Tabs.Main:AddToggle("IgnoreOutsideArena", {
+    Title = "Ignore Outside Arena",
+    Default = false,
+    Callback = function(v)
+        IgnoreOutsideArena = v
+    end
+})
+
+Tabs.Main:AddSlider("StartDelay", {
+    Title = "Start Delay (Ms)",
+    Default = 150,
+    Min = 1,
+    Max = 1000,
+    Rounding = 0,
+    Callback = function(v)
+        StartDelay = v
+    end
+})
+
+Tabs.Main:AddSlider("ReleaseDelay", {
+    Title = "Release Delay (Ms)",
+    Default = 1,
+    Min = 1,
+    Max = 1000,
+    Rounding = 0,
+    Callback = function(v)
+        ReleaseDelay = v
+    end
+})
+
+Tabs.Main:AddToggle("RandomizeStartDelay", {
+    Title = "Randomize Start Delay",
+    Default = false,
+    Callback = function(v)
+        RandomizeStartDelay = v
+    end
+})
+
+Tabs.Main:AddToggle("RandomizeReleaseDelay", {
+    Title = "Randomize Release Delay",
+    Default = false,
+    Callback = function(v)
+        RandomizeReleaseDelay = v
+    end
+})
+
+--==================================================
+-- PLAYER HIGHLIGHT
+--==================================================
+Tabs.PlayerHighlight:AddToggle("AttackHighlight", {
+    Title = "Attack Highlight",
+    Default = false
+})
+
+Tabs.PlayerHighlight:AddSlider("HighlightDistance", {
+    Title = "Highlight Distance",
+    Default = 10,
+    Min = 1,
+    Max = 20,
+    Rounding = 0,
+    Callback = function(v)
+        HighlightDistance = v
+    end
+})
+
+Tabs.PlayerHighlight:AddColorpicker("AttackHighlightColor", {
+    Title = "Attack Highlight Color",
+    Default = Color3.fromRGB(255, 0, 0)
+})
+
+--==================================================
+-- UTILS
+--==================================================
+
+Tabs.Useful:AddToggle("DisableWhenRoundEnds", {
+    Title = "Disable When Round Ends",
+    Default = false,
+    Callback = function(v)
+        DisableWhenRoundEnds = v
+    end
+})
+
+--==================================================
+-- MISC
+--==================================================
+
+Tabs.Miscellaneous:AddToggle("StealthMode", {
+    Title = "Stealth Mode (Disable Notifications)",
+    Default = false,
+    Callback = function(v)
+        StealthMode = v
+    end
+})
+
+Tabs.Miscellaneous:AddToggle("DisableWhenAFK", {
+    Title = "Disable When AFK",
+    Default = false,
+    Callback = function(v)
+        DisableWhenAFK = v
+    end
+})
+
+--==================================================
+-- SETTINGS
+--==================================================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+InterfaceManager:SetFolder("FluentScriptHub")
+SaveManager:SetFolder("FluentScriptHub/karate-game")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+Window:SelectTab(1)
+SaveManager:LoadAutoloadConfig()
+
+--==================================================
+-- KEYBIND F (AUTO BLOCK)
+--==================================================
+local UserInputService = game:GetService("UserInputService")
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        local newValue = not AutoBlockToggle.Value
+        AutoBlockToggle:SetValue(newValue)
+        AutoBlockEnabled = newValue
+
+        Fluent:Notify({
+            Title = "Auto Block",
+            Content = newValue and "Enabled" or "Disabled",
+            Duration = 1.5
+        })
+    end
+end)
+
+--==================================================
+-- IDS DE ATAQUE (AUTO BLOCK + HIGHLIGHT)
+--==================================================
+local AttackIDs = {
+    [122701861229121]=true,[114221477824657]=true,[125018409349026]=true,
+    [82911091354553]=true,[103336801329780]=true,[105150646815272]=true,
+    [83407779189782]=true,[77211220327972]=true,[131738926005737]=true,
+    [99933226512298]=true,[130596967059494]=true,[121357948303216]=true,
+    [121198390506303]=true,[114218990397580]=true,[122913161645160]=true,
+    [106329559025355]=true,[107606309178933]=true,[100775133196683]=true,
+    [83802329098847]=true,[118480299660805]=true,[113684712729173]=true,
+    [106497344112583]=true,[112272301704366]=true,[131037233929491]=true,
+    [72927149141988]=true,[75572200914356]=true,[126662379286392]=true,
+    [98318926280319]=true,[107740883402248]=true,[108913510610406]=true,
+    [85410000959765]=true,[74555786900330]=true,[76496360985151]=true
+}
+
+--==================================================
+-- FUNÇÃO OPONENTE (REUTILIZADA)
+--==================================================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+
+local function getOpponentName()
+    local arenas = workspace:FindFirstChild("Arenas")
+    if not arenas then return nil end
+
+    for _, arena in ipairs(arenas:GetChildren()) do
+        local info = arena:FindFirstChild("Info")
+        local active = info and info:FindFirstChild("Active")
+        if not (info and active) then continue end
+
+        local p1 = info:FindFirstChild("P1", true)
+        local p2 = info:FindFirstChild("P2", true)
+        if not (p1 and p2) then continue end
+
+        if p1.Title.Text == LocalPlayer.Name then
+            return p2.Title.Text
+        elseif p2.Title.Text == LocalPlayer.Name then
+            return p1.Title.Text
+        end
+    end
+    return nil
+end
+
+--==================================================
+-- ATTACK HIGHLIGHT (POR ANIMAÇÃO)
+--==================================================
+local function addHighlight(char)
+    if char:FindFirstChild("AttackHighlight") then return end
+
+    local h = Instance.new("Highlight")
+    h.Name = "AttackHighlight"
+    h.FillTransparency = 0.0
+    h.OutlineTransparency = 0
+    h.FillColor = Fluent.Options.AttackHighlightColor.Value
+    h.OutlineColor = h.FillColor
+    h.Adornee = char
+    h.Parent = char
+end
+
+local function fadeHighlight(char, duration)
+    local h = char:FindFirstChild("AttackHighlight")
+    if not h then return end
+
+    duration = duration or 0.15
+
+    local tweenInfo = TweenInfo.new(
+        duration,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out
+    )
+
+    local tween = TweenService:Create(h, tweenInfo, {
+        FillTransparency = 1,
+        OutlineTransparency = 1
+    })
+
+    tween:Play()
+
+    tween.Completed:Once(function()
+        if h then
+            h:Destroy()
+        end
+    end)
+end
+
+local function monitorAttackHighlight(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if not hum then return end
+
+    hum.AnimationPlayed:Connect(function(track)
+        if not Fluent.Options.AttackHighlight.Value then return end
+
+        local id = tonumber(track.Animation.AnimationId:match("%d+"))
+        if not (id and AttackIDs[id]) then return end
+
+        -- SEMPRE checar arena (forçado)
+        local opponent = getOpponentName()
+        if not opponent or char.Name ~= opponent then return end
+
+        local myChar = LocalPlayer.Character
+        if not myChar then return end
+
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+        local enemyRoot = char:FindFirstChild("HumanoidRootPart")
+        if not (myRoot and enemyRoot) then return end
+
+        -- Distância do highlight
+        local maxDist = Fluent.Options.HighlightDistance.Value
+        if (myRoot.Position - enemyRoot.Position).Magnitude > maxDist then
+            return
+        end
+
+        addHighlight(char)
+
+        track.Stopped:Once(function()
+            fadeHighlight(char, 0.12)
+        end)
+    end)
+end
+
+--==================================================
+-- AUTO BLOCK
+--==================================================
+task.spawn(function()
+    local VIM = game:GetService("VirtualInputManager")
+    local isBlocking = false
+
+    local function doBlock()
+        if isBlocking or not AutoBlockEnabled then return end
+
+        local BChance = Fluent.Options.BlockChance.Value
+        local RChance = math.random(1, 100)
+
+        if RChance > BChance then return end
+        isBlocking = true
+
+        local SDelay = Fluent.Options.StartDelay.Value
+        if RandomizeStartDelay then
+	    SDelay = math.random(165, SDelay)
+        end
+        local RDelay = Fluent.Options.ReleaseDelay.Value
+        if RandomizeReleaseDelay then
+	    RDelay = math.random(1, RDelay)
+        end
+
+        task.wait((SDelay / 1000))
+        VIM:SendMouseButtonEvent(0,0,1,true,game,0)
+        task.wait(RDelay / 1000)
+        VIM:SendMouseButtonEvent(0,0,1,false,game,0)
+
+        isBlocking = false
+    end
+
+    local function monitorCharacter(char)
+        local hum = char:WaitForChild("Humanoid",5)
+        if not hum then return end
+
+        monitorAttackHighlight(char)
+
+        hum.AnimationPlayed:Connect(function(track)
+            if not AutoBlockEnabled then return end
+
+            local id = tonumber(track.Animation.AnimationId:match("%d+"))
+            if not (id and AttackIDs[id]) then return end
+
+            local myChar = LocalPlayer.Character
+            if not myChar then return end
+
+            local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+            local enemyRoot = char:FindFirstChild("HumanoidRootPart")
+            if not (myRoot and enemyRoot) then return end
+
+            if IgnoreOutsideArena then
+                local opponent = getOpponentName()
+                if not opponent or char.Name ~= opponent then return end
+            end
+
+            if IgnorePlayersBehind then
+                local look = myRoot.CFrame.LookVector
+                local dir = (enemyRoot.Position - myRoot.Position).Unit
+                if look:Dot(dir) < 0 then return end
+            end
+
+            if (myRoot.Position - enemyRoot.Position).Magnitude <= MaxBlockDistance then
+                task.spawn(doBlock)
+            end
+        end)
+    end
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            if p.Character then monitorCharacter(p.Character) end
+            p.CharacterAdded:Connect(monitorCharacter)
+        end
+    end
+
+    Players.PlayerAdded:Connect(function(p)
+        if p ~= LocalPlayer then
+            p.CharacterAdded:Connect(monitorCharacter)
+        end
+    end)
+end)
+
+--==================================================
+-- DISABLE WHEN ROUND ENDS
+--==================================================
+task.spawn(function()
+    local wasActive = false
+
+    while task.wait(0.25) do
+        if not DisableWhenRoundEnds then
+            wasActive = false
+            continue
+        end
+
+        local arenas = workspace:FindFirstChild("Arenas")
+        if not arenas then continue end
+
+        for _, arena in ipairs(arenas:GetChildren()) do
+            local info = arena:FindFirstChild("Info")
+            local active = info and info:FindFirstChild("Active")
+            if not (info and active) then continue end
+
+            local p1 = info:FindFirstChild("P1", true)
+            local p2 = info:FindFirstChild("P2", true)
+            if not (p1 and p2) then continue end
+
+            if p1.Title.Text ~= LocalPlayer.Name and p2.Title.Text ~= LocalPlayer.Name then
+                continue
+            end
+
+            if active.Value then
+                wasActive = true
+            elseif wasActive then
+                AutoBlockToggle:SetValue(false)
+                AutoBlockEnabled = false
+                wasActive = false
+
+                Fluent:Notify({
+                    Title = "Auto Block",
+                    Content = "Disabled (Round End)",
+                    Duration = 2
+                })
+            end
+        end
+    end
+end)
+
+--==================================================
+-- DISABLE WHEN AFK
+--==================================================
+task.spawn(function()
+    while task.wait(0.5) do
+        if not DisableWhenAFK then
+            continue
+        end
+
+        if not AutoBlockEnabled then
+            continue
+        end
+
+        local character = LocalPlayer.Character
+        local info = character and character:FindFirstChild("Info")
+        local afk = info and info:FindFirstChild("AFK")
+
+        if afk and afk.Value then
+            AutoBlockToggle:SetValue(false)
+            AutoBlockEnabled = false
+
+            Fluent:Notify({
+                Title = "Auto Block",
+                Content = "Disabled (AFK)",
+                Duration = 2
+            })
+        end
+    end
+end)
